@@ -18,6 +18,8 @@ first of all, if you need some custom configuration you have to copy
 
         ./3-build.sh
 
+  The build step will re-run CMake automatically if the source tree is newer than the cached build metadata.
+
 
 ## compiler.sh 
 

@@ -58,6 +58,19 @@ function comp_ccacheShowStats() {
     ccache -s
 }
 
+function comp_needs_configure() {
+  local cache_file="$BUILDPATH/CMakeCache.txt"
+
+  if [[ ! -f "$cache_file" ]]; then
+    return 0
+  fi
+
+  find "$SRCPATH" \
+    \( -path "$BUILDPATH" -o -path '*/.git' \) -prune -o \
+    -type f \( -name 'CMakeLists.txt' -o -name '*.cmake' -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) \
+    -newer "$cache_file" -print -quit | grep -q .
+}
+
 function comp_configure() {
   CWD=$(pwd)
 
@@ -119,6 +132,11 @@ function comp_compile() {
   echo "Using $MTHREADS threads"
 
   pushd "$BUILDPATH" >> /dev/null || exit 1
+
+  if comp_needs_configure; then
+    echo "Detected stale CMake configuration; re-running configure"
+    comp_configure
+  fi
 
   comp_ccacheEnable
 

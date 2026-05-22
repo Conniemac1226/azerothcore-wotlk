@@ -248,6 +248,41 @@ teardown() {
     fi
 }
 
+@test "functions: comp_compile should refresh stale CMake metadata automatically" {
+    local test_root="/tmp/test_compiler_reconfigure_$RANDOM"
+    local test_build="$test_root/build"
+    local test_src="$test_root/src"
+
+    mkdir -p "$test_build" "$test_src"
+    touch "$test_build/CMakeCache.txt"
+    sleep 1
+    touch "$test_src/CMakeLists.txt"
+
+    run bash -c "
+        export BUILDPATH='$test_build'
+        export SRCPATH='$test_src'
+        export BINPATH='/tmp'
+        export AC_BINPATH_FULL='/tmp'
+        export CTYPE='Release'
+        export MTHREADS=1
+
+        function cmake() {
+            echo 'CMAKE called with args: $*'
+            return 0
+        }
+        export -f cmake
+
+        source '$SCRIPT_DIR/includes/functions.sh'
+        comp_compile
+    "
+
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "Detected stale CMake configuration" ]]
+    [[ "$output" =~ "CMAKE called with args:" ]]
+
+    rm -rf "$test_root"
+}
+
 @test "functions: comp_build should call configure and compile" {
     # Mock the comp_configure and comp_compile functions
     run -127 bash -c "
