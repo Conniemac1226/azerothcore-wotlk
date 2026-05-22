@@ -1916,6 +1916,18 @@ struct npc_chesspiece : public ScriptedAI
                     {
                         DoCast(SPELL_MOVE_COOLDOWN);
                         me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
+
+                        float const walkSpeed = me->GetSpeed(MOVE_WALK);
+                        float const runSpeed = me->GetSpeed(MOVE_RUN);
+                        float const dist2d = me->GetExactDist2d(target);
+                        float const dz = target->GetPositionZ() - me->GetPositionZ();
+                        if (!me->IsInWorld() || !me->IsAlive() || me->HasUnitState(UNIT_STATE_ROOT | UNIT_STATE_STUNNED) ||
+                            (walkSpeed <= 0.01f && runSpeed <= 0.01f) ||
+                            (dist2d < 0.5f && dz > -0.5f && dz < 0.5f))
+                        {
+                            return;
+                        }
+
                         me->GetMotionMaster()->MovePoint(0, target->GetPositionX(), target->GetPositionY(), target->GetPositionZ());
                         target->CastSpell(target, SPELL_MOVE_MARKER, false);
                         _currentOrientation = KarazhanChessOrientationType(result);
