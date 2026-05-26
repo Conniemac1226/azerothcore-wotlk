@@ -116,6 +116,7 @@ struct boss_moroes : public BossAI
     void Reset() override
     {
         BossAI::Reset();
+        me->SetImmuneToAll(false);
         DoCastSelf(SPELL_DUAL_WIELD, true);
         _recentlySpoken = false;
         _vanished = false;
