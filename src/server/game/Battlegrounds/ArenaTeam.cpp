@@ -132,6 +132,10 @@ bool ArenaTeam::AddMember(ObjectGuid playerGuid)
 
     if (sWorld->getIntConfig(CONFIG_ARENA_START_PERSONAL_RATING) > 0)
         personalRating = sWorld->getIntConfig(CONFIG_ARENA_START_PERSONAL_RATING);
+    // Allow true 0-start progression when legacy team start rating is configured to 0.
+    else if (sWorld->getIntConfig(CONFIG_ARENA_START_PERSONAL_RATING) == 0 &&
+             sWorld->getIntConfig(CONFIG_LEGACY_ARENA_START_RATING) == 0)
+        personalRating = 0;
     else if (sArenaSeasonMgr->GetCurrentSeason() < 6)
         personalRating = 1500;
     else if (GetRating() >= 1000)

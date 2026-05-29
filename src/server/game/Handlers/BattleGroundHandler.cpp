@@ -548,13 +548,19 @@ void WorldSession::HandleBattleFieldPortOpcode(WorldPacket& recvData)
     }
     else // leave queue
     {
+        // Rated arena group queue removal is handled recursively by BattlegroundQueue::RemovePlayer.
+        // Calling RemovePlayer for each group member can trigger duplicate removals/log errors.
+        if (ginfo.ArenaType && ginfo.IsRated)
+            bgQueue.RemovePlayer(_player->GetGUID(), true);
+
         for (auto const& playerGuid : ginfo.Players)
         {
             auto player = ObjectAccessor::FindConnectedPlayer(playerGuid);
             if (!player)
                 continue;
 
-            bgQueue.RemovePlayer(playerGuid, true);
+            if (!(ginfo.ArenaType && ginfo.IsRated))
+                bgQueue.RemovePlayer(playerGuid, true);
             player->RemoveBattlegroundQueueId(bgQueueTypeId);
 
             sBattlegroundMgr->BuildBattlegroundStatusPacket(&data, bg, queueSlot, STATUS_NONE, 0, 0, 0, TEAM_NEUTRAL);
