@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK), built with CMake, backed by MySQL.
 
@@ -7,16 +7,22 @@ AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK)
 - **Do not configure or build unless explicitly asked.** Builds are slow (CMake + compile of a large C++ codebase) and rarely needed to make code changes.
 - **Never edit SQL files outside `data/sql/updates/pending_db_*/`.** `data/sql/base/`, `data/sql/archive/`, and `data/sql/updates/db_*/` are immutable (do not modify).
 - **Do not run git commands that modify repo state** (commit, branch, merge, rebase, reset, push, …) unless explicitly requested, and do not include them in plans. Read-only git (status, diff, log) is fine.
+- This workspace has two separate runtime trees. Progression work must target `/home/cbur/azeroth-progression-server` and `worldserver-progression.service`; the other live tree is `/home/cbur/azeroth-server` with `worldserver.service`. Before any install or restart, confirm the target with `systemctl status` and `readlink -f /proc/<pid>/exe`. Never assume the non-progression tree is the right destination.
+- Temporary debugging changes are allowed while diagnosing a live issue, but they must stay narrowly scoped, be easy to identify, and be removed once the root cause is confirmed. Do not leave permanent timing/logging noise in playerbots or raid code after the investigation is done.
 
 ## Build
 
 Out-of-source build is required (in-source is blocked by CMake).
 
+When you build this workspace, use all available cores unless the user explicitly asks for a constrained build.
+Progression work assumes the install prefix is `/home/cbur/azeroth-progression-server`; use `/home/cbur/azeroth-server` only when the task is explicitly about the other live tree.
+
 ```bash
 mkdir -p build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/azeroth-server -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/azeroth-progression-server -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DSCRIPTS=static -DMODULES=static
-make -j$(nproc) && make install
+cmake --build . -j$(nproc)
+cmake --install .
 ```
 
 Compiler: **C++20** required (`CMAKE_CXX_STANDARD 20`). Useful CMake flags: `BUILD_TESTING=ON` (Google Test), `NOPCH=1` (disable precompiled headers). Full flag set in `conf/dist/config.cmake`. `compile_commands.json` is exported automatically.
