@@ -156,12 +156,64 @@ void WorldSession::HandleLfgPlayerLockInfoRequestOpcode(WorldPacket& /*recvData*
 
     // Get Random dungeons that can be done at a certain level and expansion
     uint8 level = GetPlayer()->GetLevel();
-    lfg::LfgDungeonSet const& randomDungeons =
+    lfg::LfgDungeonSet randomDungeons =
         sLFGMgr->GetRandomAndSeasonalDungeons(level, GetPlayer()->GetSession()->Expansion());
 
     // Get player locked Dungeons
     sLFGMgr->InitializeLockedDungeons(GetPlayer(), GetPlayer()->GetGroup()); // pussywizard
     lfg::LfgLockMap const& lock = sLFGMgr->GetLockedDungeons(guid);
+    std::map<uint32, uint32> lockByDungeonId;
+    for (auto const& [lockDungeonEntry, lockReason] : lock)
+        lockByDungeonId[lockDungeonEntry & 0x00FFFFFF] = lockReason;
+
+    for (auto itr = randomDungeons.begin(); itr != randomDungeons.end(); )
+    {
+        uint32 randomDungeonId = (*itr) & 0x00FFFFFF;
+        lfg::LFGDungeonData const* randomDungeon = sLFGMgr->GetLFGDungeon(randomDungeonId);
+        bool keepDungeon = false;
+
+        if (randomDungeon)
+        {
+            if (randomDungeon->type == lfg::LFG_TYPE_RANDOM)
+            {
+                lfg::LfgDungeonSet const& dungeonPool = sLFGMgr->GetDungeonsByRandom(randomDungeonId);
+                uint8 difficultyFlag = (randomDungeonId == lfg::RANDOM_DUNGEON_NORMAL_TBC ||
+                                        randomDungeonId == lfg::RANDOM_DUNGEON_NORMAL_WOTLK) ? 0 : 1;
+
+                for (uint32 dungeonId : dungeonPool)
+                {
+                    auto lockItr = lockByDungeonId.find(dungeonId);
+                    if (lockItr == lockByDungeonId.end())
+                    {
+                        keepDungeon = true;
+                        break;
+                    }
+
+                    if (lockItr->second == lfg::LFG_LOCKSTATUS_RAID_LOCKED && sWorld->getBoolConfig(CONFIG_LFG_ALLOW_COMPLETED))
+                    {
+                        lfg::LFGDungeonData const* dungeon = sLFGMgr->GetLFGDungeon(dungeonId);
+                        if (dungeon && !sLFGMgr->IsDungeonDisabled(dungeon->map, Difficulty(difficultyFlag)))
+                        {
+                            keepDungeon = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                auto lockItr = lockByDungeonId.find(randomDungeonId);
+                if (lockItr == lockByDungeonId.end())
+                    keepDungeon = true;
+            }
+        }
+
+        if (keepDungeon)
+            ++itr;
+        else
+            itr = randomDungeons.erase(itr);
+    }
+
     uint32 rsize = uint32(randomDungeons.size());
     uint32 lsize = uint32(lock.size());
 

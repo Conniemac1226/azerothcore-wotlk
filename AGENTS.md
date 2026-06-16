@@ -8,6 +8,7 @@ AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK)
 - **Never edit SQL files outside `data/sql/updates/pending_db_*/`.** `data/sql/base/`, `data/sql/archive/`, and `data/sql/updates/db_*/` are immutable (do not modify).
 - **Do not run git commands that modify repo state** (commit, branch, merge, rebase, reset, push, …) unless explicitly requested, and do not include them in plans. Read-only git (status, diff, log) is fine.
 - This workspace has two separate runtime trees. Progression work must target `/home/cbur/azeroth-progression-server` and `worldserver-progression.service`; the other live tree is `/home/cbur/azeroth-server` with `worldserver.service`. Before any install or restart, confirm the target with `systemctl status` and `readlink -f /proc/<pid>/exe`. Never assume the non-progression tree is the right destination.
+- Each module has its own git repository. When pushing or pulling module changes, run git inside that module's repo (`git -C modules/<module> ...`) and do not assume the top-level repo owns the module history.
 - Temporary debugging changes are allowed while diagnosing a live issue, but they must stay narrowly scoped, be easy to identify, and be removed once the root cause is confirmed. Do not leave permanent timing/logging noise in playerbots or raid code after the investigation is done.
 
 ## Build
@@ -108,3 +109,14 @@ Then declare and call `AddSC_<name>()` from the regional loader: `Spells/spells_
 **Module hooks** (e.g. `OnPlayerLogin`, `OnWorldUpdate`, `OnSpellCast`) are declared in `src/server/game/Scripting/ScriptDefines/*.h`. Implement by inheriting the matching base (`PlayerScript`, `WorldScript`, …) and registering with `new MyClass();` (or its `RegisterXxxScript` macro where one exists) inside `AddSC_<name>()`. Full hook list: https://www.azerothcore.org/wiki/hooks-script.
 
 Custom (non-upstream) scripts go in `src/server/scripts/Custom/` (gitignored).
+
+## Recent Notes
+
+- `mod-individual-progression` now participates in LFG lock initialization
+  through `OnInitializeLockedDungeons`, so progression-blocked dungeons are
+  marked with the quest-not-completed lock reason.
+- The worldserver LFG lock-info flow now filters random dungeon entries
+  against the player's lock map, so RDF stops offering fully blocked
+  randoms and brings them back as progression unlocks after restart.
+- `LFGMgr::GetDungeonsByRandom()` is exposed for the lock-info filtering
+  path that matches random dungeon pools to their member instances.
