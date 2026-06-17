@@ -95,6 +95,13 @@ CI also runs `cppcheck`.
 - **DB queries**: use `PreparedStatement` (via `WorldDatabase` / `CharacterDatabase` / `LoginDatabase` and the prepared-statement enums) rather than raw query strings. Reads that don't need to block the world tick go through the async path: `_queryProcessor.AddCallback(db.AsyncQuery(stmt).WithPreparedCallback(...))` (or `WithCallback` for non-prepared). Multi-statement writes wrap in `SQLTransaction` + `Execute` / `AppendPreparedStatement`.
 - **Timed actions in AI**: use `EventMap` (event id → delay; simple) or `TaskScheduler` (lambdas, repeats, cancellation). Both are members of `CreatureAI`; see any boss script under `src/server/scripts/` for examples — don't roll your own tick counters.
 
+## Strategy Reference
+
+- For `mod-playerbots` dungeon and boss strategy changes, use WotLK dungeon
+  strategies as the comparison baseline first, and WotLK raid strategies too
+  when the boss mechanics are more similar. Do not borrow TBC strategy
+  patterns unless there is no WotLK analogue or the user explicitly asks.
+
 ## Scripting registration
 
 Scripts inherit from a `ScriptObject` subclass (`SpellScript`, `AuraScript`, `CreatureScript`, `InstanceMapScript`, `GameObjectScript`, `CommandScript`, …). Two registration styles coexist:
