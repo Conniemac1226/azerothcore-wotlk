@@ -16,8 +16,8 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 
 DELETE FROM `trainer_spell` WHERE `TrainerId` = 7 AND `SpellId` IN (900000, 900001, 900002, 900003, 900004);
 INSERT INTO `trainer_spell` (`TrainerId`, `SpellId`, `MoneyCost`, `ReqSkillLine`, `ReqSkillRank`, `ReqAbility1`, `ReqAbility2`, `ReqAbility3`, `ReqLevel`, `VerifiedBuild`) VALUES
-(7, 900000, 0, 0, 0, 1499, 0, 0, 20, 0),
-(7, 900001, 0, 0, 0, 13809, 0, 0, 28, 0),
-(7, 900002, 0, 0, 0, 13795, 0, 0, 16, 0),
-(7, 900003, 0, 0, 0, 13813, 0, 0, 34, 0),
-(7, 900004, 0, 0, 0, 34600, 0, 0, 68, 0);
+(7, 900000, 0, 0, 0, 0, 0, 0, 20, 0),
+(7, 900001, 0, 0, 0, 0, 0, 0, 28, 0),
+(7, 900002, 0, 0, 0, 0, 0, 0, 16, 0),
+(7, 900003, 0, 0, 0, 0, 0, 0, 34, 0),
+(7, 900004, 0, 0, 0, 0, 0, 0, 68, 0);
