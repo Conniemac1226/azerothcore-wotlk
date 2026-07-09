@@ -18,12 +18,18 @@
 #include "Cell.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
+#include "GameObject.h"
+#include "Map.h"
+#include "ObjectMgr.h"
 #include "Pet.h"
+#include "Player.h"
+#include "PlayerScript.h"
 #include "SpellAuraEffects.h"
 #include "SpellAuras.h"
 #include "SpellMgr.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
+#include <array>
 /*
  * Scripts for spells with SPELLFAMILY_HUNTER, SPELLFAMILY_PET and SPELLFAMILY_GENERIC spells used by hunter players.
  * Ordered alphabetically using scriptname.
@@ -89,6 +95,96 @@ enum HunterSpellIcons
     HUNTER_ICON_RAPID_RECUPERATION                  = 3560
 };
 
+namespace
+{
+constexpr uint32 SPELL_HUNTER_LAUNCH_FREEZING_TRAP = 900000;
+constexpr uint32 SPELL_HUNTER_LAUNCH_FROST_TRAP = 900001;
+constexpr uint32 SPELL_HUNTER_LAUNCH_IMMOLATION_TRAP = 900002;
+constexpr uint32 SPELL_HUNTER_LAUNCH_EXPLOSIVE_TRAP = 900003;
+constexpr uint32 SPELL_HUNTER_LAUNCH_SNAKE_TRAP = 900004;
+
+struct HunterTrapLauncherFamily
+{
+    uint32 LauncherSpellId;
+    std::array<uint32, 8> TrapRanks;
+};
+
+constexpr std::array<HunterTrapLauncherFamily, 5> HunterTrapLauncherFamilies =
+{{
+    { SPELL_HUNTER_LAUNCH_FREEZING_TRAP, { 14311, 14310, 1499, 0, 0, 0, 0, 0 } },
+    { SPELL_HUNTER_LAUNCH_FROST_TRAP, { 13809, 0, 0, 0, 0, 0, 0, 0 } },
+    { SPELL_HUNTER_LAUNCH_IMMOLATION_TRAP, { 49056, 49055, 27023, 14304, 14303, 14302, 13795, 0 } },
+    { SPELL_HUNTER_LAUNCH_EXPLOSIVE_TRAP, { 49067, 49066, 27025, 14317, 14316, 13813, 0, 0 } },
+    { SPELL_HUNTER_LAUNCH_SNAKE_TRAP, { 34600, 0, 0, 0, 0, 0, 0, 0 } }
+}};
+
+HunterTrapLauncherFamily const* GetHunterTrapLauncherFamily(uint32 launcherSpellId)
+{
+    for (HunterTrapLauncherFamily const& family : HunterTrapLauncherFamilies)
+        if (family.LauncherSpellId == launcherSpellId)
+            return &family;
+
+    return nullptr;
+}
+
+uint32 ResolveHunterTrapLauncherSpellId(Player const* player, uint32 launcherSpellId)
+{
+    HunterTrapLauncherFamily const* family = GetHunterTrapLauncherFamily(launcherSpellId);
+    if (!player || !family)
+        return 0;
+
+    for (uint32 trapSpellId : family->TrapRanks)
+        if (trapSpellId && player->HasSpell(trapSpellId))
+            return trapSpellId;
+
+    return 0;
+}
+
+uint32 GetHunterTrapLauncherForFirstTrapRank(uint32 trapSpellId)
+{
+    switch (trapSpellId)
+    {
+        case 1499:
+            return SPELL_HUNTER_LAUNCH_FREEZING_TRAP;
+        case 13809:
+            return SPELL_HUNTER_LAUNCH_FROST_TRAP;
+        case 13795:
+            return SPELL_HUNTER_LAUNCH_IMMOLATION_TRAP;
+        case 13813:
+            return SPELL_HUNTER_LAUNCH_EXPLOSIVE_TRAP;
+        case 34600:
+            return SPELL_HUNTER_LAUNCH_SNAKE_TRAP;
+        default:
+            return 0;
+    }
+}
+
+bool IsHunterTrapSummonEffect(SpellEffectInfo const& effectInfo)
+{
+    return effectInfo.Effect == SPELL_EFFECT_SUMMON_OBJECT_SLOT1
+        || effectInfo.Effect == SPELL_EFFECT_SUMMON_OBJECT_SLOT2
+        || effectInfo.Effect == SPELL_EFFECT_SUMMON_OBJECT_SLOT3
+        || effectInfo.Effect == SPELL_EFFECT_SUMMON_OBJECT_SLOT4;
+}
+
+uint8 GetHunterTrapObjectSlot(SpellEffectInfo const& effectInfo)
+{
+    switch (effectInfo.Effect)
+    {
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT1:
+            return 0;
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT2:
+            return 1;
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT3:
+            return 2;
+        case SPELL_EFFECT_SUMMON_OBJECT_SLOT4:
+            return 3;
+        default:
+            return MAX_GAMEOBJECT_SLOT;
+    }
+}
+}
+
 class spell_hun_check_pet_los : public SpellScript
 {
     PrepareSpellScript(spell_hun_check_pet_los);
@@ -133,6 +229,122 @@ class spell_hun_cower : public AuraScript
     void Register() override
     {
         DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_hun_cower::CalculateAmount, EFFECT_1, SPELL_AURA_MOD_DECREASE_SPEED);
+    }
+};
+
+// 900000-900004 - Hunter Trap Launcher family spells
+class spell_hun_trap_launcher : public SpellScript
+{
+    PrepareSpellScript(spell_hun_trap_launcher);
+
+    bool Validate(SpellInfo const* spellInfo) override
+    {
+        return GetHunterTrapLauncherFamily(spellInfo->Id) != nullptr;
+    }
+
+    SpellCastResult CheckCast()
+    {
+        Player const* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
+        if (!ResolveHunterTrapLauncherSpellId(player, GetSpellInfo()->Id))
+            return SPELL_FAILED_NOT_KNOWN;
+
+        return SPELL_CAST_OK;
+    }
+
+    void HandleSummon(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+
+        Unit* caster = GetCaster();
+        Player* player = caster ? caster->ToPlayer() : nullptr;
+        if (!caster || !player)
+            return;
+
+        uint32 const trapSpellId = ResolveHunterTrapLauncherSpellId(player, GetSpellInfo()->Id);
+        SpellInfo const* trapSpellInfo = sSpellMgr->GetSpellInfo(trapSpellId);
+        if (!trapSpellInfo)
+            return;
+
+        SpellEffectInfo const* trapEffect = nullptr;
+        for (SpellEffectInfo const& effectInfo : trapSpellInfo->Effects)
+        {
+            if (IsHunterTrapSummonEffect(effectInfo))
+            {
+                trapEffect = &effectInfo;
+                break;
+            }
+        }
+
+        if (!trapEffect || !trapEffect->MiscValue)
+            return;
+
+        uint8 const slot = GetHunterTrapObjectSlot(*trapEffect);
+        if (slot >= MAX_GAMEOBJECT_SLOT)
+            return;
+
+        if (ObjectGuid guid = caster->m_ObjectSlot[slot])
+        {
+            if (GameObject* gameObject = caster->GetMap()->GetGameObject(guid))
+            {
+                if (trapSpellId == gameObject->GetSpellId())
+                    gameObject->SetSpellId(0);
+
+                caster->RemoveGameObject(gameObject, true);
+            }
+
+            caster->m_ObjectSlot[slot].Clear();
+        }
+
+        float x;
+        float y;
+        float z;
+        if (WorldLocation const* dest = GetExplTargetDest())
+            dest->GetPosition(x, y, z);
+        else
+            caster->GetClosePoint(x, y, z, DEFAULT_WORLD_OBJECT_SIZE);
+
+        Map* map = caster->GetMap();
+        GameObject* trap = new GameObject();
+        G3D::Quat const rotation = G3D::Quat::fromAxisAngleRotation(G3D::Vector3::unitZ(), caster->GetOrientation());
+        if (!trap->Create(map->GenerateLowGuid<HighGuid::GameObject>(), trapEffect->MiscValue, map, caster->GetPhaseMask(), x, y, z, caster->GetOrientation(), rotation, 0, GO_STATE_READY))
+        {
+            delete trap;
+            return;
+        }
+
+        int32 const duration = trapSpellInfo->GetDuration();
+        trap->SetRespawnTime(duration > 0 ? duration / IN_MILLISECONDS : 0);
+        trap->SetSpellId(trapSpellId);
+        caster->AddGameObject(trap);
+
+        GetSpell()->ExecuteLogEffectSummonObject(effIndex, trap);
+
+        map->AddToMap(trap, true);
+        caster->m_ObjectSlot[slot] = trap->GetGUID();
+    }
+
+    void Register() override
+    {
+        OnCheckCast += SpellCheckCastFn(spell_hun_trap_launcher::CheckCast);
+        OnEffectHit += SpellEffectFn(spell_hun_trap_launcher::HandleSummon, EFFECT_ALL, SPELL_EFFECT_ANY);
+    }
+};
+
+class spell_hun_trap_launcher_player : public PlayerScript
+{
+public:
+    spell_hun_trap_launcher_player() : PlayerScript("spell_hun_trap_launcher_player", { PLAYERHOOK_ON_LEARN_SPELL }) { }
+
+    void OnPlayerLearnSpell(Player* player, uint32 spellID) override
+    {
+        if (!player)
+            return;
+
+        uint32 const launcherSpellId = GetHunterTrapLauncherForFirstTrapRank(spellID);
+        if (!launcherSpellId || player->HasSpell(launcherSpellId))
+            return;
+
+        player->learnSpell(launcherSpellId);
     }
 };
 
@@ -1698,6 +1910,8 @@ void AddSC_hunter_spell_scripts()
     RegisterSpellScript(spell_hun_animal_handler);
     RegisterSpellScript(spell_hun_generic_scaling);
     RegisterSpellScript(spell_hun_taming_the_beast);
+    RegisterSpellScript(spell_hun_trap_launcher);
+    new spell_hun_trap_launcher_player();
     RegisterSpellScript(spell_hun_glyph_of_arcane_shot);
     RegisterSpellScript(spell_hun_aspect_of_the_beast);
     RegisterSpellScript(spell_hun_ascpect_of_the_viper);
