@@ -140,6 +140,16 @@ uint32 ResolveHunterTrapLauncherSpellId(Player const* player, uint32 launcherSpe
     return 0;
 }
 
+void LearnKnownHunterTrapLaunchers(Player* player)
+{
+    if (!player)
+        return;
+
+    for (HunterTrapLauncherFamily const& family : HunterTrapLauncherFamilies)
+        if (!player->HasSpell(family.LauncherSpellId) && ResolveHunterTrapLauncherSpellId(player, family.LauncherSpellId))
+            player->learnSpell(family.LauncherSpellId);
+}
+
 uint32 GetHunterTrapLauncherForFirstTrapRank(uint32 trapSpellId)
 {
     switch (trapSpellId)
@@ -333,7 +343,12 @@ class spell_hun_trap_launcher : public SpellScript
 class spell_hun_trap_launcher_player : public PlayerScript
 {
 public:
-    spell_hun_trap_launcher_player() : PlayerScript("spell_hun_trap_launcher_player", { PLAYERHOOK_ON_LEARN_SPELL }) { }
+    spell_hun_trap_launcher_player() : PlayerScript("spell_hun_trap_launcher_player", { PLAYERHOOK_ON_LOGIN, PLAYERHOOK_ON_LEARN_SPELL }) { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        LearnKnownHunterTrapLaunchers(player);
+    }
 
     void OnPlayerLearnSpell(Player* player, uint32 spellID) override
     {
