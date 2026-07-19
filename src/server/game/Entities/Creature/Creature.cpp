@@ -2710,7 +2710,7 @@ bool Creature::CanCreatureAttack(Unit const* victim, bool skipDistCheck) const
             return true;
     }
 
-    if (skipDistCheck)
+    if (skipDistCheck || (IsAIEnabled && AI()->CanIgnoreLeash(victim)))
         return true;
 
     if (Unit* unit = GetCharmerOrOwner())

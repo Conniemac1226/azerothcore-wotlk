@@ -74,6 +74,10 @@ struct boss_doomwalker : public ScriptedAI
                 context.Repeat(6s);
                 _inEnrage = true;
             }
+            else
+            {
+                context.Repeat(1s);
+            }
         }).Schedule(5s, 13s, [this](TaskContext context)
         {
             DoCastVictim(SPELL_SUNDER_ARMOR);
@@ -84,16 +88,15 @@ struct boss_doomwalker : public ScriptedAI
             context.Repeat(7s, 27s);
         }).Schedule(25s, 35s, [this](TaskContext context)
         {
-            if (urand(0, 1))
+            if (!urand(0, 1))
             {
-                return;
+                Talk(SAY_EARTHQUAKE);
+                if (_inEnrage) // avoid enrage + earthquake
+                {
+                    me->RemoveAurasDueToSpell(SPELL_ENRAGE);
+                }
+                DoCastAOE(SPELL_EARTHQUAKE);
             }
-            Talk(SAY_EARTHQUAKE);
-            if (_inEnrage) // avoid enrage + earthquake
-            {
-                me->RemoveAurasDueToSpell(SPELL_ENRAGE);
-            }
-            DoCastAOE(SPELL_EARTHQUAKE);
             context.Repeat(30s, 55s);
         }).Schedule(30s, 45s, [this](TaskContext context)
         {
@@ -112,7 +115,11 @@ struct boss_doomwalker : public ScriptedAI
                 who->CastSpell(who, SPELL_AURA_DEATH, 1);
             }
         }
+
+        CreatureAI::MoveInLineOfSight(who);
     }
+
+    bool CanIgnoreLeash(Unit const* /*target*/) const override { return true; }
 
     void UpdateAI(uint32 diff) override
     {
