@@ -62,7 +62,11 @@ void WorldSession::HandleAttackSwingOpcode(WorldPacket& recvData)
         }
     }
 
-    _player->Attack(pEnemy, true);
+    if (!_player->Attack(pEnemy, true))
+    {
+        // attack was not started (e.g. target is evading, player is mounted) - stop attack state at client
+        SendAttackStop(pEnemy);
+    }
 }
 
 void WorldSession::HandleAttackStopOpcode(WorldPacket& /*recvData*/)

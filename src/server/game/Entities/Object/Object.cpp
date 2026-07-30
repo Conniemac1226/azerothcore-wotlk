@@ -513,10 +513,7 @@ void Object::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player* targe
 void Object::AddToObjectUpdateIfNeeded()
 {
     if (m_inWorld && !m_objectUpdated)
-    {
-        AddToObjectUpdate();
-        m_objectUpdated = true;
-    }
+        m_objectUpdated = AddToObjectUpdate();        
 }
 
 void Object::ClearUpdateMask(bool remove)
@@ -3115,9 +3112,10 @@ void WorldObject::GetCreaturesWithEntryInRange(std::list<Creature*>& creatureLis
     Cell::VisitObjects(this, searcher, radius);
 }
 
-void WorldObject::AddToObjectUpdate()
+bool WorldObject::AddToObjectUpdate()
 {
     GetMap()->AddUpdateObject(this);
+    return true;
 }
 
 void WorldObject::RemoveFromObjectUpdate()

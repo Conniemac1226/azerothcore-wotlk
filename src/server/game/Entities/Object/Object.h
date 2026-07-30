@@ -267,7 +267,7 @@ protected:
 
     uint16 _fieldNotifyFlags;
 
-    virtual void AddToObjectUpdate() = 0;
+    virtual bool AddToObjectUpdate() = 0;
     virtual void RemoveFromObjectUpdate() = 0;
     void AddToObjectUpdateIfNeeded();
 
@@ -661,7 +661,7 @@ public:
     void SetPositionDataUpdate();
     void UpdatePositionData();
 
-    void AddToObjectUpdate() override;
+    bool AddToObjectUpdate() override;
     void RemoveFromObjectUpdate() override;
 
     //relocation and visibility system functions
