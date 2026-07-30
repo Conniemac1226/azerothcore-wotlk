@@ -714,7 +714,7 @@ void BattlegroundAV::ChangeMineOwner(uint8 mine, TeamId teamId, bool initial)
 
     uint16 boss;
     uint16 place;
-    
+
     if (mine == AV_NORTH_MINE)
     {
         if (teamId == TEAM_ALLIANCE)

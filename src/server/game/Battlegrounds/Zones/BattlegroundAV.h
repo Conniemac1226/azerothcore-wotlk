@@ -794,7 +794,7 @@ enum BG_AV_CreaturePlace
     AV_CPLACE_H_MARSHAL_ETOWER      = 75,
     AV_CPLACE_H_MARSHAL_WTOWER      = 76,
 
-    AV_CPLACE_MINE_N_3        = 77, // irondeep boss   
+    AV_CPLACE_MINE_N_3        = 77, // irondeep boss
     AV_CPLACE_MINE_S_3        = 78, // coldtooth boss
     AV_CPLACE_HERALD          = 79, // herald
 

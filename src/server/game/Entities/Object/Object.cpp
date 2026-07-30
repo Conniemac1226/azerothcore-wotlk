@@ -513,7 +513,7 @@ void Object::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player* targe
 void Object::AddToObjectUpdateIfNeeded()
 {
     if (m_inWorld && !m_objectUpdated)
-        m_objectUpdated = AddToObjectUpdate();        
+        m_objectUpdated = AddToObjectUpdate();
 }
 
 void Object::ClearUpdateMask(bool remove)
