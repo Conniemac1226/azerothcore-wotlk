@@ -10636,7 +10636,7 @@ void Player::ContinueTaxiFlight()
     TaxiPathNodeList const& nodeList = sTaxiPathNodesByPath[path];
 
     // Use triangle inequality to find the segment the player is on.
-    // When distPrev + distNext < distNodes, the player projects between
+    // When distPrev + distNext <= distNodes, the player projects between or exactly on
     // the two nodes of the segment. Resume from the end node (i).
     float distPrev;
     float distNext =
@@ -10664,7 +10664,7 @@ void Player::ContinueTaxiFlight()
             (node->y - prevNode->y) * (node->y - prevNode->y) +
             (node->z - prevNode->z) * (node->z - prevNode->z);
 
-        if (distPrev + distNext < distNodes)
+        if (distPrev + distNext <= distNodes)
         {
             startNode = i;
             break;

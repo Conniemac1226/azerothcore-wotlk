@@ -29,6 +29,7 @@
 #include "Transport.h"
 #include "SmartScriptMgr.h"
 #include "World.h"
+#include "WorldSession.h"
 
 inline G3D::Vector3 PositionToVector3(Position const& p) { return { p.GetPositionX(), p.GetPositionY(), p.GetPositionZ() }; }
 
@@ -749,7 +750,35 @@ bool FlightPathMovementGenerator::DoUpdate(Player* player, uint32 /*diff*/)
         } while (i_currentNode < i_path.size() - 1);
     }
 
+    // Bots have no client to send CMSG_MOVE_SPLINE_DONE at a cross-map boundary.
+    if (player->GetSession()->IsBot() && TryMapHandoff(player))
+        return true;
+
     return i_currentNode < (i_path.size() - 1);
+}
+
+bool FlightPathMovementGenerator::TryMapHandoff(Player* player)
+{
+    // Locate the boundary from the player's actual map and position because the spline and current path indexes can
+    // already reference the next map.
+    for (uint32 mapEnd = 1; mapEnd < i_path.size(); ++mapEnd)
+    {
+        TaxiPathNodeEntry const* boundaryNode = i_path[mapEnd - 1];
+        TaxiPathNodeEntry const* nextMapNode = i_path[mapEnd];
+        if (!boundaryNode || !nextMapNode || boundaryNode->mapid != player->GetMapId() ||
+            nextMapNode->mapid == player->GetMapId() ||
+            !player->IsWithinDist3d(boundaryNode->x, boundaryNode->y, boundaryNode->z, 5.0f))
+            continue;
+
+        i_currentNode = mapEnd;
+        if (player->TeleportTo(nextMapNode->mapid, nextMapNode->x, nextMapNode->y, nextMapNode->z,
+                               player->GetOrientation(), TELE_TO_NOT_LEAVE_TAXI))
+            SkipCurrentNode();
+
+        return true;
+    }
+
+    return false;
 }
 
 void FlightPathMovementGenerator::SetCurrentNodeAfterTeleport()

@@ -118,6 +118,7 @@ class FlightPathMovementGenerator : public MovementGeneratorMedium< Player, Flig
         TaxiPathNodeList const& GetPath() { return i_path; }
         uint32 GetPathAtMapEnd() const;
         bool HasArrived() const { return (i_currentNode >= i_path.size()); }
+        bool TryMapHandoff(Player* player);
         void SetCurrentNodeAfterTeleport();
         void SkipCurrentNode() { ++i_currentNode; }
         void DoEventIfAny(Player* player, TaxiPathNodeEntry const* node, bool departure);
