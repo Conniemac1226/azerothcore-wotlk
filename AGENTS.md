@@ -7,7 +7,7 @@ AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK)
 - **Do not configure or build unless explicitly asked.** Builds are slow (CMake + compile of a large C++ codebase) and rarely needed to make code changes.
 - **Never edit SQL files outside `data/sql/updates/pending_db_*/`.** `data/sql/base/`, `data/sql/archive/`, and `data/sql/updates/db_*/` are immutable (do not modify).
 - **Do not run git commands that modify repo state** (commit, branch, merge, rebase, reset, push, …) unless explicitly requested, and do not include them in plans. Read-only git (status, diff, log) is fine.
-- This workspace has two separate runtime trees. Progression work must target `/home/cbur/azeroth-progression-server` and `worldserver-progression.service`; the other live tree is `/home/cbur/azeroth-server` with `worldserver.service`. Before any install or restart, confirm the target with `systemctl status` and `readlink -f /proc/<pid>/exe`. Never assume the non-progression tree is the right destination.
+- This workspace has two separate runtime trees. Progression work must target `/home/cbur/classic-progression-server`. It is currently launched directly rather than through a dedicated `worldserver-progression.service`; identify the running `worldserver` process and confirm it with `readlink -f /proc/<pid>/exe` before any install or restart. The other live tree is `/home/cbur/azeroth-server` with `worldserver.service`. Never assume the non-progression tree is the right destination.
 - Each module has its own git repository. When pushing or pulling module changes, run git inside that module's repo (`git -C modules/<module> ...`) and do not assume the top-level repo owns the module history.
 - Temporary debugging changes are allowed while diagnosing a live issue, but they must stay narrowly scoped, be easy to identify, and be removed once the root cause is confirmed. Do not leave permanent timing/logging noise in playerbots or raid code after the investigation is done.
 
@@ -16,11 +16,11 @@ AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK)
 Out-of-source build is required (in-source is blocked by CMake).
 
 When you build this workspace, use all available cores unless the user explicitly asks for a constrained build.
-Progression work assumes the install prefix is `/home/cbur/azeroth-progression-server`; use `/home/cbur/azeroth-server` only when the task is explicitly about the other live tree.
+Progression work assumes the install prefix is `/home/cbur/classic-progression-server`; use `/home/cbur/azeroth-server` only when the task is explicitly about the other live tree.
 
 ```bash
 mkdir -p build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/azeroth-progression-server -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/classic-progression-server -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DSCRIPTS=static -DMODULES=static
 cmake --build . -j$(nproc)
 cmake --install .
