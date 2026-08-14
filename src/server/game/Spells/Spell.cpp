@@ -4482,7 +4482,6 @@ void Spell::finish(bool ok)
         dynObjOwner->RemoveDynObject(m_spellInfo->Id);
         m_caster->RemoveGameObject(m_spellInfo->Id, true);
     }
-
     if (m_spellInfo->IsChanneled())
         m_caster->UpdateInterruptMask();
 

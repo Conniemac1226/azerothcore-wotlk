@@ -953,7 +953,6 @@ const float BG_AV_CreaturePos[AV_CPLACE_MAX][4] =
     { -768.907f, -363.71f, 90.8949f, 1.07991f },     // tower_point
     { -1302.9f, -316.981f, 113.867f, 2.00713f },     // frostwolf_etower
     { -1297.5f, -266.767f, 114.15f, 3.31044f },      // frostwolf_wtower
-
     { -57.7891f, -286.597f, 15.6479f, 6.02139f },    // AV_NPC_A_CAPTAIN balinda 95
     { 722.43f, -10.9982f, 50.7046f, 3.42085f },      // AV_NPC_A_BOSS vanndar 96
     { -545.23f, -165.35f, 57.7886f, 5.88342f },      // AV_NPC_H_CAPTAIN galvangar 97
@@ -1030,7 +1029,6 @@ const uint32 BG_AV_CreatureInfo[AV_NPC_INFO_MAX] =
     11677, // Taskmaster Snivvle 25
     13086, // Aggi Rumblestomp 26
     13088, // Masha Swiftcut 27
-
     14848, // Stormpike Herald 28
     11998  // Frostwolf Herald 29
 };
