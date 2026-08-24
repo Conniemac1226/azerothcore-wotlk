@@ -39,6 +39,7 @@
 #include "SpawnData.h"
 #include "Timer.h"
 #include "GridTerrainData.h"
+#include <array>
 #include <bitset>
 #include <list>
 #include <memory>
@@ -82,6 +83,33 @@ namespace Acore
     struct ObjectUpdater;
     struct LargeObjectUpdater;
 }
+
+enum MapUpdateDiagnosticPhase : uint8
+{
+    MAP_UPDATE_DIAGNOSTIC_COLLISION,
+    MAP_UPDATE_DIAGNOSTIC_SESSIONS,
+    MAP_UPDATE_DIAGNOSTIC_EVENTS,
+    MAP_UPDATE_DIAGNOSTIC_RESPAWNS,
+    MAP_UPDATE_DIAGNOSTIC_PLAYERS,
+    MAP_UPDATE_DIAGNOSTIC_NON_PLAYERS,
+    MAP_UPDATE_DIAGNOSTIC_OBJECT_UPDATES,
+    MAP_UPDATE_DIAGNOSTIC_SCRIPTS,
+    MAP_UPDATE_DIAGNOSTIC_MOVEMENT,
+    MAP_UPDATE_DIAGNOSTIC_TAIL,
+    MAP_UPDATE_DIAGNOSTIC_PHASE_COUNT
+};
+
+struct MapUpdateDiagnosticStats
+{
+    uint64 samples = 0;
+    uint64 fullUpdates = 0;
+    uint64 queueTotalUs = 0;
+    uint64 queueMaxUs = 0;
+    uint64 executionTotalUs = 0;
+    uint64 executionMaxUs = 0;
+    std::array<uint64, MAP_UPDATE_DIAGNOSTIC_PHASE_COUNT> phaseTotalUs{};
+    std::array<uint64, MAP_UPDATE_DIAGNOSTIC_PHASE_COUNT> phaseMaxUs{};
+};
 
 struct ScriptAction
 {
@@ -542,6 +570,11 @@ public:
     }
 
     size_t GetUpdatableObjectsCount() const { return _updatableObjectList.size(); }
+    size_t GetPendingUpdatableObjectsCount() const { return _pendingAddUpdatableObjectList.size(); }
+
+    void BeginUpdateDiagnostics(uint64 queueWaitUs);
+    void FinishUpdateDiagnostics(uint64 executionUs);
+    MapUpdateDiagnosticStats ConsumeUpdateDiagnosticStats();
 
     virtual std::string GetDebugInfo() const;
 
@@ -705,6 +738,11 @@ private:
     UpdatableObjectList _updatableObjectList;
     PendingAddUpdatableObjectList _pendingAddUpdatableObjectList;
     IntervalTimer _updatableObjectListRecheckTimer;
+    bool _collectUpdateDiagnostics = false;
+    bool _diagnosticFullUpdate = false;
+    uint64 _diagnosticQueueWaitUs = 0;
+    std::array<uint64, MAP_UPDATE_DIAGNOSTIC_PHASE_COUNT> _diagnosticPhaseUs{};
+    MapUpdateDiagnosticStats _updateDiagnosticStats;
     ZoneWideVisibleWorldObjectsMap _zoneWideVisibleWorldObjectsMap;
 
     TimeTrackerSmall _redirectKickTimer;

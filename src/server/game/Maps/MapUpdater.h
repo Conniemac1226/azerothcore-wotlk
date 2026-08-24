@@ -20,9 +20,11 @@
 
 #include "Define.h"
 #include "PCQueue.h"
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <thread>
-#include <atomic>
+#include <vector>
 
 class Map;
 class UpdateRequest;
@@ -42,6 +44,10 @@ public:
     void deactivate();
     bool activated();
     void update_finished();
+    void ConfigureDiagnostics();
+    bool DiagnosticsEnabled() const { return _diagnosticsEnabled; }
+    void ReportDiagnostics();
+    void RecordLFGDiagnostics(uint64 queueWaitUs, uint64 executionUs);
 
 private:
     void WorkerThread();
@@ -51,6 +57,18 @@ private:
     std::vector<std::thread> _workerThreads;
     std::mutex _lock; // Mutex and condition variable for synchronization
     std::condition_variable _condition;
+    bool _diagnosticsEnabled = false;
+    uint32 _diagnosticsIntervalSeconds = 300;
+    uint32 _diagnosticsTopCount = 10;
+    std::chrono::steady_clock::time_point _lastDiagnosticsReport;
+    uint64 _diagnosticWaitSamples = 0;
+    uint64 _diagnosticWaitTotalUs = 0;
+    uint64 _diagnosticWaitMaxUs = 0;
+    uint64 _diagnosticLfgSamples = 0;
+    uint64 _diagnosticLfgQueueTotalUs = 0;
+    uint64 _diagnosticLfgQueueMaxUs = 0;
+    uint64 _diagnosticLfgExecutionTotalUs = 0;
+    uint64 _diagnosticLfgExecutionMaxUs = 0;
 };
 
 #endif //_MAP_UPDATER_H_INCLUDED

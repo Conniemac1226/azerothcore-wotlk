@@ -711,6 +711,7 @@ Logger.time.update=4,Console Server
 Logger.module=4,Console Server
 Logger.spells.scripts=2,Console Errors
 Logger.playerbots=5,Console Playerbots
+Logger.playerbots.levelbrackets=4,Playerbots
 # Logger.achievement=4,Console Server
 # Logger.addon=4,Console Server
 # Logger.auctionHouse=4,Console Server
@@ -1332,6 +1333,30 @@ MapUpdateInterval = 10
 #        Default:     1
 
 MapUpdate.Threads = 1
+
+#
+#    MapUpdate.Diagnostics.Enable
+#        Description: Enables temporary, rate-limited map update timing diagnostics. Reports the maps and instances
+#                     consuming the most update time, scheduler queue delay, update phase percentages, and object,
+#                     grid, respawn, and per-map pool counts through the time.update.map logger.
+#        Default:     0 - (Disabled)
+#                     1 - (Enabled)
+
+MapUpdate.Diagnostics.Enable = 0
+
+#
+#    MapUpdate.Diagnostics.Interval
+#        Description: Seconds between map update diagnostic reports. Values below 30 are clamped to 30.
+#        Default:     300
+
+MapUpdate.Diagnostics.Interval = 300
+
+#
+#    MapUpdate.Diagnostics.TopCount
+#        Description: Number of maps or instances to report, ordered by total execution time. Range: 1-25.
+#        Default:     10
+
+MapUpdate.Diagnostics.TopCount = 10
 
 #
 #    MoveMaps.Enable

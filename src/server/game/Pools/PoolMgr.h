@@ -73,6 +73,9 @@ public:
     void RemoveSpawn(uint32 db_guid_or_pool_id, uint32 pool_id);
 
     SpawnedPoolObjects GetSpawnedQuests() const { return mSpawnedQuests; } // a copy of the set
+    size_t GetSpawnedCreatureCount() const { return mSpawnedCreatures.size(); }
+    size_t GetSpawnedGameObjectCount() const { return mSpawnedGameobjects.size(); }
+    size_t GetSpawnedPoolCount() const { return mSpawnedPools.size(); }
 private:
     Map* mOwner;
     SpawnedPoolObjects mSpawnedCreatures;

@@ -56,6 +56,7 @@ MapMgr* MapMgr::instance()
 void MapMgr::Initialize()
 {
     int num_threads(sWorld->getIntConfig(CONFIG_NUMTHREADS));
+    m_updater.ConfigureDiagnostics();
 
     // Start mtmaps if needed
     if (num_threads > 0)
@@ -277,7 +278,10 @@ void MapMgr::Update(uint32 diff)
     }
 
     if (m_updater.activated())
+    {
         m_updater.wait();
+        m_updater.ReportDiagnostics();
+    }
 
     if (mapUpdateStep < 3)
     {

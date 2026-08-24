@@ -45,6 +45,7 @@
 #include "VMapMgr2.h"
 #include "Weather.h"
 #include "WeatherMgr.h"
+#include <chrono>
 
 #define MAP_INVALID_ZONE        0xFFFFFFFF
 
@@ -435,8 +436,28 @@ void Map::UpdatePlayerZoneStats(uint32 oldZone, uint32 newZone)
 
 void Map::Update(const uint32 t_diff, const uint32 s_diff, bool  /*thread*/)
 {
+    using DiagnosticClock = std::chrono::steady_clock;
+    DiagnosticClock::time_point diagnosticPhaseStart;
+    if (_collectUpdateDiagnostics)
+    {
+        _diagnosticFullUpdate = t_diff != 0;
+        diagnosticPhaseStart = DiagnosticClock::now();
+    }
+
+    auto finishDiagnosticPhase = [this, &diagnosticPhaseStart](MapUpdateDiagnosticPhase phase)
+    {
+        if (!_collectUpdateDiagnostics)
+            return;
+
+        DiagnosticClock::time_point const now = DiagnosticClock::now();
+        _diagnosticPhaseUs[phase] += std::chrono::duration_cast<std::chrono::microseconds>(
+            now - diagnosticPhaseStart).count();
+        diagnosticPhaseStart = now;
+    };
+
     if (t_diff)
         _mapCollisionData.GetDynamicTree().update(t_diff);
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_COLLISION);
 
     // Update world sessions and players
     for (m_mapRefIter = m_mapRefMgr.begin(); m_mapRefIter != m_mapRefMgr.end(); ++m_mapRefIter)
@@ -454,12 +475,15 @@ void Map::Update(const uint32 t_diff, const uint32 s_diff, bool  /*thread*/)
                 player->Update(s_diff);
         }
     }
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_SESSIONS);
 
     Events.Update(t_diff);
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_EVENTS);
 
     if (!t_diff)
     {
         HandleDelayedVisibility();
+        finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_TAIL);
         return;
     }
 
@@ -474,6 +498,7 @@ void Map::Update(const uint32 t_diff, const uint32 s_diff, bool  /*thread*/)
         else
             _respawnCheckTimer -= t_diff;
     }
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_RESPAWNS);
 
     _updatableObjectListRecheckTimer.Update(t_diff);
     resetMarkedCells();
@@ -502,10 +527,13 @@ void Map::Update(const uint32 t_diff, const uint32 s_diff, bool  /*thread*/)
             }
         }
     }
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_PLAYERS);
 
     UpdateNonPlayerObjects(t_diff);
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_NON_PLAYERS);
 
     SendObjectUpdates();
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_OBJECT_UPDATES);
 
     ///- Process necessary scripts
     if (!m_scriptSchedule.empty())
@@ -514,10 +542,12 @@ void Map::Update(const uint32 t_diff, const uint32 s_diff, bool  /*thread*/)
         ScriptsProcess();
         i_scriptLock = false;
     }
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_SCRIPTS);
 
     MoveAllCreaturesInMoveList();
     MoveAllGameObjectsInMoveList();
     MoveAllDynamicObjectsInMoveList();
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_MOVEMENT);
 
     HandleDelayedVisibility();
 
@@ -535,6 +565,47 @@ void Map::Update(const uint32 t_diff, const uint32 s_diff, bool  /*thread*/)
     METRIC_VALUE("map_gameobjects", uint64(GetObjectsStore().Size<GameObject>()),
         METRIC_TAG("map_id", std::to_string(GetId())),
         METRIC_TAG("map_instanceid", std::to_string(GetInstanceId())));
+
+    finishDiagnosticPhase(MAP_UPDATE_DIAGNOSTIC_TAIL);
+}
+
+void Map::BeginUpdateDiagnostics(uint64 queueWaitUs)
+{
+    _collectUpdateDiagnostics = true;
+    _diagnosticFullUpdate = false;
+    _diagnosticQueueWaitUs = queueWaitUs;
+    _diagnosticPhaseUs.fill(0);
+}
+
+void Map::FinishUpdateDiagnostics(uint64 executionUs)
+{
+    if (!_collectUpdateDiagnostics)
+        return;
+
+    ++_updateDiagnosticStats.samples;
+    if (_diagnosticFullUpdate)
+        ++_updateDiagnosticStats.fullUpdates;
+
+    _updateDiagnosticStats.queueTotalUs += _diagnosticQueueWaitUs;
+    _updateDiagnosticStats.queueMaxUs = std::max(_updateDiagnosticStats.queueMaxUs, _diagnosticQueueWaitUs);
+    _updateDiagnosticStats.executionTotalUs += executionUs;
+    _updateDiagnosticStats.executionMaxUs = std::max(_updateDiagnosticStats.executionMaxUs, executionUs);
+
+    for (uint8 phase = 0; phase < MAP_UPDATE_DIAGNOSTIC_PHASE_COUNT; ++phase)
+    {
+        _updateDiagnosticStats.phaseTotalUs[phase] += _diagnosticPhaseUs[phase];
+        _updateDiagnosticStats.phaseMaxUs[phase] = std::max(
+            _updateDiagnosticStats.phaseMaxUs[phase], _diagnosticPhaseUs[phase]);
+    }
+
+    _collectUpdateDiagnostics = false;
+}
+
+MapUpdateDiagnosticStats Map::ConsumeUpdateDiagnosticStats()
+{
+    MapUpdateDiagnosticStats stats = _updateDiagnosticStats;
+    _updateDiagnosticStats = {};
+    return stats;
 }
 
 void Map::UpdateNonPlayerObjects(uint32 const diff)
@@ -1726,7 +1797,6 @@ void Map::SendObjectUpdates()
             iter->second.Clear();
             continue;
         }
-
 
         iter->second.BuildPacket(packet);
         iter->first->SendDirectMessage(&packet);
