@@ -809,15 +809,20 @@ void BattlegroundAV::PopulateNode(BG_AV_Nodes node)
 
     if (node >= BG_AV_NODES_MAX)//fail safe
         return;
-    Creature* trigger = GetBgMap()->GetCreature(BgCreatures[node + 302]);//0-302 other creatures
+
+    // Per-node world trigger. Its coordinates live in the AV_CPLACE_TRIGGER01..19 block of BG_AV_CreaturePos.
+    uint32 const triggerPlace = AV_CPLACE_TRIGGER01 + static_cast<uint32>(node);
+
+    Creature* trigger = GetBgMap()->GetCreature(BgCreatures[triggerPlace]);
+
     if (!trigger)
     {
         trigger = AddCreature(WORLD_TRIGGER,
-                                node + 302,
-                                BG_AV_CreaturePos[node + 302][0],
-                                BG_AV_CreaturePos[node + 302][1],
-                                BG_AV_CreaturePos[node + 302][2],
-                                BG_AV_CreaturePos[node + 302][3]);
+                              triggerPlace,
+                              BG_AV_CreaturePos[triggerPlace][0],
+                              BG_AV_CreaturePos[triggerPlace][1],
+                              BG_AV_CreaturePos[triggerPlace][2],
+                              BG_AV_CreaturePos[triggerPlace][3]);
     }
 
     //add bonus honor aura trigger creature when node is accupied
@@ -827,7 +832,7 @@ void BattlegroundAV::PopulateNode(BG_AV_Nodes node)
     {
         if (ownerId != TEAM_ALLIANCE && ownerId != TEAM_HORDE)//node can be neutral, remove trigger
         {
-            DelCreature(node + 302);
+            DelCreature(triggerPlace);
             return;
         }
         trigger->SetFaction(ownerId == TEAM_ALLIANCE ? FACTION_ALLIANCE_GENERIC : FACTION_HORDE_GENERIC);
@@ -855,9 +860,12 @@ void BattlegroundAV::DePopulateNode(BG_AV_Nodes node, bool ignoreSpiritGuide)
         DelCreature(node);
     }
 
+    uint32 const triggerPlace = static_cast<uint32>(AV_CPLACE_TRIGGER01) + static_cast<uint32>(node);
+
     //remove bonus honor aura trigger creature when node is lost
-    if (node < BG_AV_NODES_MAX)//fail safe
-        DelCreature(node + 302);//nullptr checks are in DelCreature! 0-302 spirit guides
+    if (node < BG_AV_NODES_MAX) //fail safe
+        DelCreature(triggerPlace);
+
 }
 
 BG_AV_Nodes BattlegroundAV::GetNodeThroughObject(uint32 object)
@@ -989,6 +997,7 @@ void BattlegroundAV::EventPlayerDefendsPoint(Player* player, uint32 object)
     SpawnBGObject(object, RESPAWN_ONE_DAY);
 
     DefendNode(node, teamId);
+    DePopulateNode(node, false);
     PopulateNode(node);
     UpdateNodeWorldState(node);
 
