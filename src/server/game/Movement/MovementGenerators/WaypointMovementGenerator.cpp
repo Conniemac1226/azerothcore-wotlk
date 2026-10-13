@@ -757,7 +757,7 @@ bool FlightPathMovementGenerator::DoUpdate(Player* player, uint32 /*diff*/)
     }
 
     // Bots have no client to send CMSG_MOVE_SPLINE_DONE at a cross-map boundary.
-    if (player->GetSession()->IsBot() && TryMapHandoff(player))
+    if (player->GetSession()->IsHeadless() && TryMapHandoff(player))
         return true;
 
     return i_currentNode < (i_path.size() - 1);
