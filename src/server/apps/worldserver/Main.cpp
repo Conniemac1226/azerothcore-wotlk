@@ -451,16 +451,23 @@ bool StartDB()
         .AddDatabase(WorldDatabase, "World");
 
     if (!loader.Load())
+    {
+        MySQL::Library_End();
         return false;
+    }
 
     if (!sScriptMgr->OnModuleDatabasesLoading())
+    {
+        StopDB();
         return false;
+    }
 
     ///- Get the realm Id from the configuration file
     realm.Id.Realm = sConfigMgr->GetOption<uint32>("RealmID", 1);
     if (!realm.Id.Realm)
     {
         LOG_ERROR("server.worldserver", "Realm ID not defined in configuration file");
+        StopDB();
         return false;
     }
     else if (realm.Id.Realm > 255)
@@ -471,6 +478,7 @@ bool StartDB()
          * anything further the client will behave anormaly
         */
         LOG_ERROR("server.worldserver", "Realm ID must range from 1 to 255");
+        StopDB();
         return false;
     }
 
