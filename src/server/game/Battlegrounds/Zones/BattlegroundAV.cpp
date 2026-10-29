@@ -839,18 +839,17 @@ void BattlegroundAV::PopulateNode(BG_AV_Nodes node)
         trigger->CastSpell(trigger, SPELL_HONORABLE_DEFENDER_25Y, false);
     }
 }
-void BattlegroundAV::DePopulateNode(BG_AV_Nodes node, bool ignoreSpiritGuide)
+
+void BattlegroundAV::DePopulateNode(BG_AV_Nodes node, bool ignoreSpiritGuide, bool towerDefended)
 {
     uint32 c_place = AV_CPLACE_DEFENSE_STORM_AID + (4 * node);
 
-    if (!IsTower(node) || m_Nodes[node].State == POINT_DESTROYED)
+    if (!IsTower(node) || m_Nodes[node].State == POINT_DESTROYED || towerDefended)
     {
         for (uint8 i = 0; i < 4; i++)
         {
             if (BgCreatures[c_place + i])
-            {
                 DelCreature(c_place + i);
-            }
         }
     }
 
@@ -997,7 +996,7 @@ void BattlegroundAV::EventPlayerDefendsPoint(Player* player, uint32 object)
     SpawnBGObject(object, RESPAWN_ONE_DAY);
 
     DefendNode(node, teamId);
-    DePopulateNode(node, false);
+    DePopulateNode(node, false, true);
     PopulateNode(node);
     UpdateNodeWorldState(node);
 
