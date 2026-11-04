@@ -5,7 +5,8 @@ AzerothCore is a C++ MMORPG server emulator for World of Warcraft 3.3.5a (WotLK)
 ## Agent rules
 
 - **Do not configure or build unless explicitly asked.** Builds are slow (CMake + compile of a large C++ codebase) and rarely needed to make code changes.
-- **Never edit SQL files outside `data/sql/updates/pending_db_*/`.** `data/sql/base/`, `data/sql/archive/`, and `data/sql/updates/db_*/` are immutable (do not modify).
+- **Custom SQL:** Author project-specific SQL only in `data/sql/updates/pending_db_*/`. Do not directly edit historical or already-merged SQL in `data/sql/base/`, `data/sql/archive/`, or `data/sql/updates/db_*/`.
+- **Upstream SQL:** When merging or pulling upstream history, include upstream SQL changes at their original paths, including files under `data/sql/base/`, `data/sql/archive/`, `data/sql/updates/db_*/`, and module SQL directories. These paths are immutable to local custom edits, not to upstream merges. Do not drop upstream SQL solely because it is outside a pending update directory. Resolve conflicts carefully to preserve upstream changes and local custom work; put any new project-specific SQL in the appropriate pending update directory. Report semantic conflicts that cannot be safely combined.
 - **Do not run git commands that modify repo state** (commit, branch, merge, rebase, reset, push, …) unless explicitly requested, and do not include them in plans. Read-only git (status, diff, log) is fine.
 - This workspace is used on multiple machines, and runtime install paths can differ between them. Never copy or
   hardcode a progression path from another host. Resolve the current machine's progression prefix from the existing
